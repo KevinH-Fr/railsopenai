@@ -4,10 +4,15 @@ class Chat < ApplicationRecord
   attr_accessor :message 
 
   def message=(message)
-    messages = [
-      { 'role' => 'system', 'content' => message }
-    ]
-
+      messages = [
+        { 'role' => 'system', 'content' => message }
+      ]
+      
+      q_and_a.each do |question, answer| 
+        messages << { 'role' => 'user', 'content' => question }
+        messages << { 'role' => 'assistant', 'content' => answer }
+      end
+    
     response_raw = client.chat(
       parameters: {
         model: 'gpt-3.5-turbo',
@@ -18,8 +23,10 @@ class Chat < ApplicationRecord
       }
     )
 
-    Rails.logger.debug response_raw
-    
+    self.history = { 'history' => [] } if history.blank?
+    self.history['history'] << response_raw 
+
+    #Rails.logger.debug response_raw
     response = JSON.parse(response_raw.to_json, object_class: OpenStruct)
     self.q_and_a << [message, response.choices[0].message.content]
     
